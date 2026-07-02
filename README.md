@@ -14,11 +14,28 @@ on a table with 100M rows. `CREATE INDEX` without `CONCURRENTLY` freezes writes.
 the old app version mid rolling-deploy. These are well-known traps, but they're easy to miss in
 review — migration-guard encodes them so the agent (and CI) catch them every time.
 
+## Free vs Full
+
+| Feature | Free | Full |
+|---|---|---|
+| **BLOCKER rules** — locking DDL (non-concurrent indexes, rewriting `ALTER TYPE`, `SET NOT NULL`, unvalidated constraints, `VACUUM FULL`, inline PK/UNIQUE builds, stored generated columns) | ✅ | ✅ |
+| **BLOCKER rules** — data loss (`DROP`, `TRUNCATE`, `UPDATE`/`DELETE` without `WHERE`, narrowing type changes) | ✅ | ✅ |
+| **Oracle support** — `ONLINE` index builds, `SET UNUSED` vs `DROP COLUMN`, `ALTER TABLE MOVE`, auto-committing DDL | ✅ | ✅ |
+| **CRITICAL rules** — zero-downtime / rolling-deploy hazards (`RENAME`, adding `NOT NULL` while old version writes, single-statement backfills, DDL+DML in one transaction, missing `lock_timeout`) | ❌ | ✅ |
+| **WARNING rules** — hygiene (Flyway naming, missing `IF [NOT] EXISTS`, `DROP CASCADE`, low-selectivity indexes) | ❌ | ✅ |
+| **Zero-downtime rewrites** — the agent produces a complete safe multi-step migration (expand-contract, batched backfill, two-step constraint validation) | ❌ | ✅ |
+| **Semantic layer** — catches what regex can't: dropped column still mapped in a JPA `@Entity`, forgotten rollback script, interacting migrations in the same PR | ❌ | ✅ |
+| **Output formats** | text only | text + JSON + SARIF |
+| **CI gate** (`--fail-on blocker\|critical\|warning` + exit code) | blocker only | all severities |
+| **MySQL support** — online DDL nuances, gh-ost/pt-osc guidance | ❌ | ✅ |
+| **Liquibase support** — XML/YAML changeSet tag mapping | ❌ | ✅ |
+
+**Get the full edition →** *(marketplace link coming soon)*
+
 ## Install (as a skill)
 
 ```bash
-# unpack into your agent's skills directory
-# Full edition available on marketplace (link coming soon)
+curl -sSL https://github.com/julia-shtal/migration-guard-free/releases/latest/download/migration-guard-free.zip -o mg.zip
 unzip mg.zip -d ~/.claude/skills/
 ```
 
@@ -133,13 +150,3 @@ Build them: `python build.py --edition free` / `--edition full` (outputs to `dis
 migration-guard is a static analyzer: it reads SQL, it does not connect to your database or know
 your table sizes. It reduces risk; it does not replace a human review for high-stakes changes.
 When an operation rewrites a table and the size is unknown, it errs toward warning.
-
-## Development
-
-```bash
-pip install sqlglot pytest
-python -m pytest tests/ -q
-```
-
-The test suite enforces two invariants: every dangerous fixture fires its rule, and every safe
-fixture produces zero findings (the false-positive regression net).
