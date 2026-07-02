@@ -30,7 +30,7 @@ review — migration-guard encodes them so the agent (and CI) catch them every t
 | **MySQL support** — online DDL nuances, gh-ost/pt-osc guidance | ❌ | ✅ |
 | **Liquibase support** — XML/YAML changeSet tag mapping | ❌ | ✅ |
 
-**Get the full edition →** *(marketplace link coming soon)*
+**Get the full edition →** ***[Agensi](https://www.agensi.io/skills/migration-guard)***
 
 ## Install (as a skill)
 
